@@ -11,11 +11,23 @@
 			margin: 10px;
 			padding: 10px;
 			background-color: #fff;
-			border: thin inset #aaa;
+			border: thin solid #aaa;
+			display: none;
+		}
+		#snapshotImageElement{
+			position: absolute;
+			left: 10px;
+			top: 10px;
+			margin: 20px;
+			border: thin solid #aaa;
 		}
 	</style>
 </head>
 <body>
+	<div id="controls">
+		<input id="snapshotButton" type="button" value="Take Snapshot" />
+	</div>
+	<img id="snapshotImageElement" />
 	<canvas id="canvas" width="600" height="600"></canvas>
 
 	<script type="text/javascript">
@@ -29,6 +41,13 @@
 			RADIUS = canvas.width/2 - MARGIN,
 			HAND_RADIUS = RADIUS + NUMERAL_SPACING;
 
+		var snapshotButton = document.getElementById('snapshotButton'),
+			snapshotImageElement = document.getElementById('snapshotImageElement');
+
+
+		function updateClockImage(){
+			snapshotImageElement.src = canvas.toDataURL();
+		}
 		function drawCircle(){
 			context.beginPath();
 			context.arc(canvas.width/2,canvas.height/2,RADIUS,0,Math.PI*2,true);
@@ -75,10 +94,38 @@
 		function drawClock(){
 			context.clearRect(0,0,canvas.width,canvas.height);
 
+			context.save();
+
+			context.fillStyle = 'rgba(255,255,255,0.8)';
+			context.fillRect(0,0,canvas.width,canvas.height);
+
 			drawCenter();
 			drawCenter();
 			drawHands();
+
+			context.restore();
+
 			drawNumerals();
+
+			updateClockImage();
+		}
+
+		snapshotButton.onclick = function(e){
+			var dataUrl;
+
+			if(snapshotButton.value === 'Take Snapshot'){
+				dataUrl = canvas.toDataURL();
+				clearInterval(loop);
+				snapshotImageElement.src = dataUrl;
+				snapshotImageElement.style.display = 'inline';
+				canvas.style.display = 'none';
+				snapshotButton.value = 'Return to Canvas';
+			}else{
+				canvas.style.display = 'inline';
+				snapshotImageElement.style.display = 'none';
+				loop = setInterval(drawClock,1000);
+				snapshotButton.value = 'Take Snapshot';
+			}
 		}
 
 		context.font = FONT_HEIGHT + "px Arial";
