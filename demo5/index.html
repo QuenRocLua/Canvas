@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Canvas图像处理</title>
+	<style type="text/css">
+		body{
+			background-color: #ddd;
+		}
+		#canvas{
+			margin: 10px;
+			background-color: #fff;
+			border: thin solid #aaa;
+		}
+	</style>
+</head>
+<body>
+	<canvas id="canvas" width="1000" height="2000"></canvas>
+
+	<script type="text/javascript">
+		var canvas = document.getElementById('canvas'),
+			context = canvas.getContext('2d'),
+			image = new Image();
+
+		image.src = 'img/countrypath.jpg';
+		image.onload = function(e){
+			context.drawImage(image,10,10);
+			context.drawImage(image,10,image.height+10,300,300);
+			context.drawImage(image,10,10,100,100,10,image.height+310,100,100);
+		}
+	</script>
+</body>
+</html>
