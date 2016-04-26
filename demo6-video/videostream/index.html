@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>index</title>
+	<meta name="title" content="">
+    <meta name="description" content="" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0,user-scalable=no">
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta http-equiv="pragma" content="no-cache" />
+    <link href="css/style.css" type="text/css" rel="stylesheet">
+</head>
+<body>
+	<video id="videoplayer" src=""></video>
+    <canvas id="canvas" width="720" height="405"></canvas>
+    <div class="floatingControls" id="controls">
+        <input type="button" value="Play" id="controlBtn" />
+        <input id="colorCheckBox" type="checkbox" checked />Color
+        <input id="flipCheckbox" type="checkbox" />Flip
+        <input type="checkbox" id="invertCheckbox" />反色
+        <input type="checkbox" id="adjustCheckbox" />灰色调
+        <input type="checkbox" id="blurCheckbox" />模糊
+        <input type="checkbox" id="reliefCheckbox" />浮雕
+        <input type="checkbox" id="diaokeCheckbox" />雕刻
+        <input type="checkbox" id="mirrorCheckbox" />镜像
+    </div>
+    <script type="text/javascript" src="js/requestNextAnimationFrame.js"></script>
+    <script type="text/javascript">
+        var promisifiedOldGUM = function(constraints, successCallback, errorCallback) {
+
+            // First get ahold of getUserMedia, if present
+            var getUserMedia = (navigator.getUserMedia ||
+                navigator.webkitGetUserMedia ||
+                navigator.mozGetUserMedia);
+
+            // Some browsers just don't implement it - return a rejected promise with an error
+            // to keep a consistent interface
+            if(!getUserMedia) {
+                alert('getUserMedia is not implemented in this browser');
+            }
+
+            // Otherwise, wrap the call to the old navigator.getUserMedia with a Promise
+            return new Promise(function(successCallback, errorCallback) {
+                getUserMedia.call(navigator, constraints, successCallback, errorCallback);
+            });
+            
+        }
+
+        // Older browsers might not implement mediaDevices at all, so we set an empty object first
+        if(navigator.mediaDevices === undefined) {
+          navigator.mediaDevices = {};
+        }
+
+        // Some browsers partially implement mediaDevices. We can't just assign an object
+        // with getUserMedia as it would overwrite existing properties.
+        // Here, we will just add the getUserMedia property if it's missing.
+        if(navigator.mediaDevices.getUserMedia === undefined) {
+          navigator.mediaDevices.getUserMedia = promisifiedOldGUM;
+        }
+
+        var constraints = {audio: true, video: true};
+        window.URL = window.URL || window.webkitURL || window.msURL || window.oURL;
+        console.log(navigator.mediaDevices.getUserMedia(constraints));
+        navigator.mediaDevices.getUserMedia(constraints).then(function(stream){
+            
+            video.src = window.URL.createObjectURL(stream);
+            video.onloadedmetadata = function(e){
+                // video.play();
+                // window.requestNextAnimationFrame(nextVideoFrame);
+            }
+        })
+        .catch(function(err){
+            console.log(err.name + ":" + err.message);
+                    alert(err.name + ":" + err.message);
+        })
+
+        var canvas = document.getElementById('canvas'),
+            context = canvas.getContext('2d'),
+            offscreenCanvas = document.createElement('canvas'),
+            offscreenContext = offscreenCanvas.getContext('2d'),
+            controlBtn = document.getElementById('controlBtn'),
+            flipCheckbox = document.getElementById('flipCheckbox'),
+            colorCheckBox = document.getElementById('colorCheckBox'),
+            invertCheckbox = document.getElementById('invertCheckbox'),
+            adjustCheckbox = document.getElementById('adjustCheckbox'),
+            blurCheckbox = document.getElementById('blurCheckbox'),
+            reliefCheckbox = document.getElementById('reliefCheckbox'),
+            diaokeCheckbox = document.getElementById('diaokeCheckbox'),
+            mirrorCheckbox = document.getElementById('mirrorCheckbox'),
+            imageData,
+            poster = new Image();
+            
+        var video = document.getElementById('videoplayer');
+        // function animate(){
+        //     if(!video.ended){
+        //         context.drawImage(video,0,0,canvas.width,canvas.height);
+        //         window.requestNextAnimationFrame(animate);
+        //     }
+        // }
+
+        // function removeColor(){
+        //     var data,width,average;
+
+        //     imageData = offscreenContext.getImageData(0,0,offscreenCanvas.width,offscreenCanvas.height);
+        //     data = imageData.data;
+        //     width = data.width;
+
+        //     for(var i = 0; i < data.length-4; i += 4){
+        //         average = (data[i] + data[i+1] + data[i+2])/3;
+        //         data[i] = average;
+        //         data[i+1] = average;
+        //         data[i+2] = average;
+        //     }
+
+        //     offscreenContext.putImageData(imageData,0,0);
+        // }
+        var data,width,average;
+        var filter = {
+            removeColor: function(){
+                imageData = offscreenContext.getImageData(0,0,offscreenCanvas.width,offscreenCanvas.height);
+                data = imageData.data;
+                width = data.width;
+                for(var i = 0; i < data.length-4; i += 4){
+                    average = (data[i] + data[i+1] + data[i+2])/3;
+                    data[i] = average;
+                    data[i+1] = average;
+                    data[i+2] = average;
+                }
+                offscreenContext.putImageData(imageData,0,0);
+            },
+            drawFlipped: function(){
+                context.save();
+
+                context.translate(canvas.width/2, canvas.height/2);
+                context.rotate(Math.PI);
+                context.translate(-canvas.width/2,-canvas.height/2);
+                context.drawImage(offscreenCanvas,0,0);
+
+                context.restore();
+            },
+            drawInvert: function(){
+                imageData = offscreenContext.getImageData(0,0,offscreenCanvas.width,offscreenCanvas.height);
+                data = imageData.data;
+                width = data.width;
+
+                for(var i = 0; i < data.length-4; i += 4){
+                    data[i] = 255-data[i];
+                    data[i+1] = 255-data[i+1];
+                    data[i+2] = 255-data[i+2];
+                }
+                offscreenContext.putImageData(imageData,0,0);
+            },
+            drawAdjust: function(){
+                imageData = offscreenContext.getImageData(0,0,offscreenCanvas.width,offscreenCanvas.height);
+                data = imageData.data;
+                width = data.width;
+
+                for(var i = 0; i < data.length-4; i += 4){
+                    var r = data[i],
+                        g = data[i+1],
+                        b = data[i+2];
+                    data[i] = (r * 0.272) + (g * 0.534) + (b * 0.131);
+                    data[i+1] = (r * 0.349) + (g * 0.686) + (b * 0.168);
+                    data[i+2] = (r * 0.393) + (g * 0.769) + (b * 0.189);
+                }
+                offscreenContext.putImageData(imageData,0,0);
+            },
+            copyImageData: function(context, src)  
+            {  
+                var dst = context.createImageData(src.width, src.height);  
+                dst.data.set(src.data);  
+                return dst;  
+            }, 
+            drawBlur: function(){
+                imageData = offscreenContext.getImageData(0,0,offscreenCanvas.width,offscreenCanvas.height);
+                data = imageData.data;
+                var tempCanvasData = this.copyImageData(offscreenContext, imageData);
+                var sumred = 0.0, sumgreen = 0.0, sumblue = 0.0;
+                for(var i = 0; i < tempCanvasData.width; i++){
+                    for(var j = 0; j < tempCanvasData.height; j++){
+                        var idx = (i + j * tempCanvasData.width) * 4;
+                        for(var subCol = -2; subCol <= 2; subCol++){
+                            var colOff = subCol + i;
+                            if(colOff < 0 || colOff >= tempCanvasData.width){
+                                colOff = 0;
+                            }
+                            for(var subRow = -2; subRow <= 2; subRow++){
+                                var rowOff = subRow + j;
+                                if(rowOff < 0 || rowOff >= tempCanvasData.height){
+                                    rowOff = 0;
+                                }
+
+                                var idx2 = (colOff + rowOff * tempCanvasData.width)*4;
+                                var r = tempCanvasData.data[idx2 + 0];
+                                var g = tempCanvasData.data[idx2 + 1];
+                                var b = tempCanvasData.data[idx2 + 2];
+
+                                sumred += r;
+                                sumgreen += g;
+                                sumblue += b;
+                            }
+                        }
+
+                        var nr = (sumred / 25.0);
+                        var ng = (sumgreen / 25.0);
+                        var nb = (sumblue / 25.0);
+
+                        sumred = 0.0;
+                        sumgreen = 0.0;
+                        sumblue = 0.0;
+
+                        data[idx + 0] = nr;
+                        data[idx + 1] = ng;
+                        data[idx + 2] = nb;
+                        data[idx + 3] = 255;
+                    }
+                }
+                offscreenContext.putImageData(imageData,0,0);
+            },
+            drawRelif: function(){
+                imageData = offscreenContext.getImageData(0,0,offscreenCanvas.width,offscreenCanvas.height);
+                data = imageData.data;
+                var tempCanvasData = this.copyImageData(offscreenContext, imageData);
+                for(var i = 1; i < tempCanvasData.width - 1; i++){
+                    for( var j = 1; j < tempCanvasData.height - 1; j++){
+                        var idx = (i + j * tempCanvasData.width) * 4;
+                        var bidx = ((i-1) + j * tempCanvasData.width) * 4;
+                        var aidx = ((i+1) + j * tempCanvasData.width) * 4;
+
+                        var nr = tempCanvasData.data[aidx + 0] - tempCanvasData.data[bidx + 0] + 128;
+                        var ng = tempCanvasData.data[aidx + 1] - tempCanvasData.data[bidx + 1] + 128;
+                        var nb = tempCanvasData.data[aidx + 2] - tempCanvasData.data[bidx + 2] + 128;
+
+                        nr = (nr < 0) ? 0 : ((nr > 255) ? 255 : nr);
+                        ng = (ng < 0) ? 0 : ((ng > 255) ? 255 : ng);
+                        nb = (nb < 0) ? 0 : ((nb > 255) ? 255 : nb);
+
+                        data[idx + 0] = nr;
+                        data[idx + 1] = ng;
+                        data[idx + 2] = nb;
+                        data[idx + 3] = 255;
+                    }
+                }
+                offscreenContext.putImageData(imageData,0,0);
+            },
+            drawDiaoKe: function(){
+                imageData = offscreenContext.getImageData(0,0,offscreenCanvas.width,offscreenCanvas.height);
+                data = imageData.data;
+                var tempCanvasData = this.copyImageData(offscreenContext, imageData);
+                for(var i = 1; i < tempCanvasData.width - 1; i++){
+                    for(var j = 1; j < tempCanvasData.height - 1; j++){
+                        var idx = (i + j * tempCanvasData.width) * 4;
+                        var bidx = ((i - 1) + j * tempCanvasData.width) * 4;
+                        var aidx = ((i + 1) + j * tempCanvasData.width) * 4;
+
+                        var nr = tempCanvasData.data[bidx + 0] - tempCanvasData.data[aidx + 0] + 128;
+                        var ng = tempCanvasData.data[bidx + 1] - tempCanvasData.data[aidx + 1] + 128; 
+                        var nb = tempCanvasData.data[bidx + 2] - tempCanvasData.data[aidx + 2] + 128;
+
+                        nr = (nr < 0) ? 0 : ((nr > 255) ? 255 : nr);
+                        ng = (ng < 0) ? 0 : ((ng > 255) ? 255 : ng);
+                        nb = (nb < 0) ? 0 : ((nb > 255) ? 255 : nb);
+
+                        data[idx + 0] = nr;
+                        data[idx + 1] = ng;
+                        data[idx + 2] = nb;
+                        data[idx + 3] = 255;  
+                    }
+                }
+                offscreenContext.putImageData(imageData,0,0);
+            },
+            drawMirror: function(){
+                imageData = offscreenContext.getImageData(0,0,offscreenCanvas.width,offscreenCanvas.height);
+                data = imageData.data;
+                var tempCanvasData = this.copyImageData(offscreenContext, imageData);
+                for(var i = 1; i < tempCanvasData.width - 1; i++){
+                    for(var j = 1; j < tempCanvasData.height - 1; j++){
+                        var idx = (i + j * tempCanvasData.width) * 4;
+                        var midx = (((tempCanvasData.width - 1) - i) + j * tempCanvasData.width) * 4;
+
+                        data[midx + 0] = tempCanvasData.data[idx + 0];
+                        data[midx + 1] = tempCanvasData.data[idx + 1];
+                        data[midx + 2] = tempCanvasData.data[idx + 2];
+                        data[midx + 3] = 255;  
+                    }
+                }
+                offscreenContext.putImageData(imageData,0,0);
+            }
+        }
+
+        function nextVideoFrame(){
+            if(video.ended){
+                controlBtn.value = 'Play';
+            }
+            else{
+                offscreenContext.drawImage(video,0,0,offscreenCanvas.width,offscreenCanvas.height);
+
+                if(!colorCheckBox.checked){
+                    filter.removeColor();
+                }
+                if(invertCheckbox.checked){
+                    filter.drawInvert();
+                }
+                if(adjustCheckbox.checked){
+                    filter.drawAdjust();
+                }
+                if(blurCheckbox.checked){
+                    filter.drawBlur();
+                }
+                if(reliefCheckbox.checked){
+                    filter.drawRelif();
+                }
+                if(diaokeCheckbox.checked){
+                    filter.drawDiaoKe();
+                }
+                if(mirrorCheckbox.checked){
+                    filter.drawMirror();
+                }
+                if(flipCheckbox.checked){
+                    filter.drawFlipped();
+                }else{
+                    context.drawImage(offscreenCanvas,0,0);
+                }
+
+                requestNextAnimationFrame(nextVideoFrame);
+            }
+        }
+
+        function startPlaying(){
+            requestNextAnimationFrame(nextVideoFrame);
+            video.play();
+        }
+
+        function stopPlaying(){
+            video.pause();
+        }
+
+        controlBtn.onclick = function(e){
+            if(controlBtn.value === "Play"){
+                startPlaying();
+                controlBtn.value = 'Pause';
+            }else{
+                stopPlaying();
+                controlBtn.value = 'Play';
+            }
+        }
+
+        offscreenCanvas.width = canvas.width;
+        offscreenCanvas.height = canvas.height;
+    </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+
+
+body{
+	background: #ddd;
+}
+
+#canvas{
+	background: #fff;
+	border: thin solid darkgray;
+}
+
+#videoplayer{
+	display: none;
+}
+.floatingControls{
+	position: absolute;
+	left: 175px;
+	top: 420px;
+}
